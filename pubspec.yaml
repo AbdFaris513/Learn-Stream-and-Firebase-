@@ -49,6 +49,8 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   get: ^4.7.3
+  intl: ^0.20.2
+  emoji_picker_flutter: ^4.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
