@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:learn_stream_and_firebase/controller/chat_controller.dart';
