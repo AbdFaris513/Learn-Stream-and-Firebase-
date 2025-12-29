@@ -146,7 +146,10 @@ class _ChatMenuState extends State<ChatMenu> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: () async {
-                            await chatController.addNewContact(context);
+                            await chatController.addNewContact(
+                              context,
+                              chatController.idController.text,
+                            );
                             Navigator.pop(context);
                           },
                           child: const Text(
@@ -217,8 +220,8 @@ class _ChatMenuState extends State<ChatMenu> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onChanged: (value) {
-                    setState(() {}); // Trigger rebuild to filter list
-                    print("Search $value");
+                    chatController.getFilteredUser(value);
+                    setState(() {}); // Rebuild to update the list
                   },
                 ),
               )
@@ -238,6 +241,7 @@ class _ChatMenuState extends State<ChatMenu> {
                 _isSearching = !_isSearching;
                 if (!_isSearching) {
                   _searchController.clear();
+                  chatController.getFilteredUser(''); // Reset to show all
                 }
               });
             },
@@ -254,89 +258,89 @@ class _ChatMenuState extends State<ChatMenu> {
         children: [
           Expanded(
             child: Obx(() {
-              // Filter the menu list based on search query
-              final filteredList = chatController.menuList.where((contact) {
-                if (_searchController.text.isEmpty) {
-                  return true;
-                }
-                final searchLower = _searchController.text.toLowerCase();
-                final nameLower = contact.name.toLowerCase();
-                final messageLower = (contact.message ?? '').toLowerCase();
-                return nameLower.contains(searchLower) || messageLower.contains(searchLower);
-              }).toList();
+              // Show filteredList if user is typing, otherwise show menuList
+              final displayList = _searchController.text.isNotEmpty
+                  ? chatController.filteredList
+                  : chatController.menuList;
 
-              if (chatController.menuList.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1F2937),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.chat_bubble_outline_rounded,
+              // Check if list is empty and show appropriate message
+              if (displayList.isEmpty) {
+                if (_searchController.text.isNotEmpty) {
+                  // No search results found
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off_rounded,
                           size: 64,
                           color: Colors.white.withOpacity(0.3),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'No conversations yet',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 16),
+                        Text(
+                          'No results found',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tap + to start chatting',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (filteredList.isEmpty && _searchController.text.isNotEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off_rounded,
-                        size: 64,
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No results found',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Try a different search term',
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Try a different search term',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
-                      ),
-                    ],
-                  ),
-                );
+                      ],
+                    ),
+                  );
+                } else {
+                  // No conversations at all
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1F2937),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 64,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'No conversations yet',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap + to start chatting',
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  );
+                }
               }
 
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: filteredList.length,
+                itemCount: displayList.length,
                 itemBuilder: (context, index) {
-                  final contact = filteredList[index];
+                  final contact = displayList[index];
                   return GestureDetector(
                     onTap: () async {
+                      if (_searchController.text.isNotEmpty) {
+                        await chatController.addNewContact(context, contact.name);
+                      }
                       chatController.listenMessages(
                         userID: chatController.currentUser.id,
                         reciverID: contact.name,

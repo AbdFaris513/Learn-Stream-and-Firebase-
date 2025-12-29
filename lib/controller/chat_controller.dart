@@ -21,6 +21,7 @@ class ChatController extends GetxController {
   }
 
   RxList<MenuModel> menuList = <MenuModel>[].obs;
+  RxList<MenuModel> filteredList = <MenuModel>[].obs;
   RxList<MessageModel> messagesList = <MessageModel>[].obs;
 
   Future<void> getUser(UserModel userModel) async {
@@ -38,9 +39,9 @@ class ChatController extends GetxController {
     }
   }
 
-  Future<void> addNewContact(BuildContext context) async {
+  Future<void> addNewContact(BuildContext context, String reciverId) async {
     try {
-      bool result = await _firebaseService.addNewContact(currentUser.id, idController.text);
+      bool result = await _firebaseService.addNewContact(currentUser.id, reciverId);
 
       if (result) {
         showCustomSnackBar(
@@ -63,6 +64,50 @@ class ChatController extends GetxController {
   final Map<String, StreamSubscription> _chatSubs = {};
 
   void listenContacts() {
+    _firebaseService.getUserStream(currentUser.id).listen((doc) {
+      if (!doc.exists) return;
+
+      final data = doc.data()!;
+      final List<dynamic> contacts = data['contacts'] ?? [];
+
+      // final List<MenuModel> temp = [];
+
+      for (final contactId in contacts) {
+        // Avoid duplicate listeners
+        if (_chatSubs.containsKey(contactId)) continue;
+
+        _firebaseService.getMenuChatStream(currentUser.id, contactId).listen((chatDoc) {
+          MenuModel model;
+
+          if (chatDoc.exists) {
+            model = MenuModel.fromJsonMenuList(chatDoc.data()!, currentUser.id, contactId);
+          } else {
+            model = MenuModel(name: contactId);
+          }
+
+          // Update or insert
+          final index = menuList.indexWhere((e) => e.name == contactId);
+          if (index == -1) {
+            menuList.add(model);
+          } else {
+            menuList[index] = model;
+            menuList.refresh();
+          }
+        });
+      }
+    });
+  }
+
+  Future<void> getFilteredUser(String searchLetters) async {
+    try {
+      final list = await _firebaseService.getFilteredUser(searchLetters);
+      filteredList.value = list;
+    } catch (e) {
+      debugPrint("Error on : $e");
+    }
+  }
+
+  void listenSearchContacts() {
     _firebaseService.getUserStream(currentUser.id).listen((doc) {
       if (!doc.exists) return;
 

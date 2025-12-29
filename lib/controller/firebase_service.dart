@@ -55,6 +55,26 @@ class FirebaseService {
     return _firestore.collection("temp_user").doc(userID).snapshots();
   }
 
+  Future<List<MenuModel>> getFilteredUser(String letters) async {
+    try {
+      if (letters.isEmpty) return [];
+
+      final querySnapshot = await _firestore
+          .collection("temp_user")
+          .orderBy(FieldPath.documentId) // ✅ IMPORTANT
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: 'abd')
+          .where(FieldPath.documentId, isGreaterThanOrEqualTo: letters)
+          .where(FieldPath.documentId, isLessThan: '$letters\uf8ff')
+          .get();
+
+      return querySnapshot.docs.map((doc) {
+        return MenuModel(name: doc.id);
+      }).toList();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   ///////////////////////////////////////////////////////////////
   Future<void> setMessageSeen(MessageModel message) async {
     try {
@@ -100,6 +120,8 @@ class FirebaseService {
         final int unreadCounts =
             (int.tryParse(data["unreadCounts"][message.receiverId]?.toString() ?? '0') ?? 0) + 1;
         reciverCount = unreadCounts;
+      } else {
+        addNewContact(message.receiverId, message.senderId);
       }
       _firestore.collection("temp_chats").doc(docId).set({
         "last_message": message.messageText,
